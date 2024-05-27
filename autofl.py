@@ -25,15 +25,12 @@ def format_message_for_llm(message_data):
     formatted_messages = []
     for message in message_data:
         the_role = message.get('role')
-        
         if the_role != 'system' and the_role != 'user' and the_role != 'assistant':
             print(the_role)
-            the_role = 'assistant'
-
+            the_role = 'system'
         formatted_message = {
             'role': the_role
         }
-
         
         if 'content' in message:
             formatted_message['content'] = f"""{message['content']}"""
@@ -82,10 +79,12 @@ class AutoDebugger():
     def _system_message(self):
         with open(self._system_file) as f:
             system_message = f.read().strip()
-        if self._allow_multi_predictions:
-            system_message += "\n\nAfter providing this diagnosis, you will be prompted to suggest which methods would be the best locations to be fixed. The answers should be in the form of `ClassName.MethodName(ArgType1, ArgType2, ...)` without commentary (one per line), as your answer will be automatically processed before finally being presented to the user."
-        else:
-            system_message += "\n\nAfter providing this diagnosis, you will be prompted to suggest which method would be the best location to be fixed. You will provide a single answer, in the form of `ClassName.MethodName(ArgType1, ArgType2, ...)`, as your answer will be automatically processed before finally being presented to the user."
+        function_descriptions = "\n".join(
+            [f"Function name: {func['name']}\nDescription: {func['description']}\nParameters: {json.dumps(func['parameters'], indent=4)}\n"
+             for func in self._ri.function_descriptions]
+        )
+        system_message += f"\n\nAvailable functions:\n{function_descriptions}"
+        system_message += "\n\nUse these functions to retrieve necessary information. Respond in JSON format with function calls."
         return system_message
 
     def _init_interaction_records(self):
@@ -153,7 +152,7 @@ class AutoDebugger():
             }
         })
         self._append_to_messages({
-            "role": "function",
+            "role": "system",  # change
             "name": self._ri.initial_coverage_getter,
             "content": json.dumps(self._ri.fname2func[self._ri.initial_coverage_getter]())
         })
@@ -191,7 +190,7 @@ class AutoDebugger():
         '''
         
 
-#         print("start")
+        print("start")
 #         response = ollama.chat(model='codellama', messages=[
 #   {
 #     'role': 'system',
@@ -255,7 +254,7 @@ class AutoDebugger():
             self._append_to_messages(response_message) # extend conversation with assistant's reply
             # send the info on the function call and function response to GPT
             function_message = {
-                "role": "function",
+                "role": "system",
                 "name": function_name,
                 "content": json.dumps(function_response),
             }
