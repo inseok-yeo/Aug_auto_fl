@@ -1,0 +1,58 @@
+TEST_TIME_WINTER = 1010534400000
+OLD_JDK = true
+locale = en
+value = UTC
+map = {GMT=UTC, WET=WET, CET=CET, MET=CET, ECT=CET, EET=EET, MIT=Pacific/Apia, HST=Pacific/Honolulu, AST=America/Anchorage, PST=America/Los_Angeles, MST=America/Denver, PNT=America/Phoenix, CST=America/Chicago, EST=America/New_York, IET=America/Indiana/Indianapolis, PRT=America/Puerto_Rico, CNT=America/St_Johns, AGT=America/Argentina/Buenos_Aires, BET=America/Sao_Paulo, ART=Africa/Cairo, CAT=Africa/Harare, EAT=Africa/Addis_Ababa, NET=Asia/Yerevan, PLT=Asia/Karachi, IST=Asia/Kolkata, BST=Asia/Dhaka, VST=Asia/Ho_Chi_Minh, CTT=Asia/Shanghai, JST=Asia/Tokyo, ACT=Australia/Darwin, AET=Australia/Sydney, SST=Pacific/Guadalcanal, NST=Pacific/Auckland}
+PARIS = Europe/Paris
+TEST_TIME_SUMMER = 1023580800000
+value = WET
+zone = America/Los_Angeles
+juZone = sun.util.calendar.ZoneInfo[id="WET",offset=0,dstSavings=3600000,useDaylight=true,transitions=123,lastRule=java.util.SimpleTimeZone[id=WET,offset=0,dstSavings=3600000,useDaylight=true,startYear=0,startMode=2,startMonth=2,startDay=-1,startDayOfWeek=1,startTime=3600000,startTimeMode=2,endMode=2,endMonth=9,endDay=-1,endDayOfWeek=1,endTime=3600000,endTimeMode=2]]
+zone = Europe/London
+y2003days = 12053
+ALLOW = org.joda.time.TestDateTimeZone$2@1b2c6ec2
+RESTRICT = org.joda.time.TestDateTimeZone$1@30dae81
+zone = UTC
+y2002days = 11688
+juZone = sun.util.calendar.ZoneInfo[id="GMT",offset=0,dstSavings=0,useDaylight=false,transitions=0,lastRule=null]
+LONDON = Europe/London
+--- org.joda.time.TestDateTimeZone::testForID_String_old
+junit.framework.ComparisonFailure: expected:<[WET]> but was:<[Europe/London]>
+	at junit.framework.Assert.assertEquals(Assert.java:100)
+	at junit.framework.Assert.assertEquals(Assert.java:107)
+	at junit.framework.TestCase.assertEquals(TestCase.java:269)
+	at org.joda.time.TestDateTimeZone.testForID_String_old(TestDateTimeZone.java:282)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at junit.framework.TestCase.runTest(TestCase.java:176)
+	at junit.framework.TestCase.runBare(TestCase.java:141)
+	at junit.framework.TestResult$1.protect(TestResult.java:122)
+	at junit.framework.TestResult.runProtected(TestResult.java:142)
+	at junit.framework.TestResult.run(TestResult.java:125)
+	at junit.framework.TestCase.run(TestCase.java:129)
+	at junit.framework.TestSuite.runTest(TestSuite.java:255)
+	at junit.framework.TestSuite.run(TestSuite.java:250)
+	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:520)
+	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTask.executeInVM(JUnitTask.java:1484)
+	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTask.execute(JUnitTask.java:872)
+	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTask.executeOrQueue(JUnitTask.java:1972)
+	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTask.execute1(JUnitTask.java:824)
+	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTask.execute(JUnitTask.java:2277)
+	at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
+	at sun.reflect.GeneratedMethodAccessor4.invoke(Unknown Source)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.tools.ant.dispatch.DispatchUtils.execute(DispatchUtils.java:106)
+	at org.apache.tools.ant.Task.perform(Task.java:348)
+	at org.apache.tools.ant.Target.execute(Target.java:392)
+	at org.apache.tools.ant.Target.performTasks(Target.java:413)
+	at org.apache.tools.ant.Project.executeSortedTargets(Project.java:1399)
+	at org.apache.tools.ant.Project.executeTarget(Project.java:1368)
+	at org.apache.tools.ant.helper.DefaultExecutor.executeTargets(DefaultExecutor.java:41)
+	at org.apache.tools.ant.Project.executeTargets(Project.java:1251)
+	at org.apache.tools.ant.Main.runBuild(Main.java:811)
+	at org.apache.tools.ant.Main.startAnt(Main.java:217)
+	at org.apache.tools.ant.launch.Launcher.run(Launcher.java:280)
+	at org.apache.tools.ant.launch.Launcher.main(Launcher.java:109)
