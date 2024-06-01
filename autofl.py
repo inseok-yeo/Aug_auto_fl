@@ -7,6 +7,9 @@ from copy import deepcopy
 #from lib import name_utils, llm_utils
 from lib.repo_interface import get_repo_interface
 import ollama
+from langchain_experimental.llms.ollama_functions import OllamaFunctions
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, FunctionMessage
+from langchain.load.dump import dumps
 
 RESULT_DIR = './results/'
 
@@ -64,10 +67,11 @@ class AutoDebugger():
         self._summarize_messages = summarize_messages
         self._system_file = system_file
         self._debug = debug
+        self.model = OllamaFunctions(model="codellama", format="json")
 
     def _replace_last_with_memo(self, memo):
         self.messages = self.messages[:-1] # replace recent two queries with memo
-        self.messages.append({'role': 'assistant', 'content': 'Summary: ' + memo})
+        self.messages.append(AIMessage(conten='Summary: ' + memo))
 
     def _append_to_messages(self, message):
         # to easily control debug behavior
@@ -94,7 +98,7 @@ class AutoDebugger():
 
     def _append_to_interaction_records(self, prompt_messages, response_message):
         def _save_message_and_get_mid(message):
-            s = json.dumps(message).encode('utf-8')
+            s = dumps(message).encode('utf-8')
             md5_hash = hashlib.md5(s).digest()
             if md5_hash not in self._mid_map:
                 self._mid_map[md5_hash] = f"m{len(self._mid_map) + 1}"
@@ -110,7 +114,15 @@ class AutoDebugger():
         self._init_interaction_records()
         self.messages = []
 
-        self._append_to_messages({'role': 'system', 'content': self._system_message})
+        tools =[{
+            "name": func['name'], 
+            "description": func['description'],
+            "parameters": func['parameters']
+            }
+             for func in self._ri.function_descriptions]
+        self.model = self.model.bind_tools(tools=tools, tool_choice='any')
+
+        self._append_to_messages(SystemMessage(content=self._system_message))
 
         fail_test_signatures = [
             signature for signature in self._ri.failing_test_signatures
@@ -137,36 +149,36 @@ class AutoDebugger():
 
         user_message += f'Start by calling the `{self._ri.initial_coverage_getter}` function.'
 
-        self._append_to_messages({
-            'role': 'user',
-            'content': user_message,
-        })
+        self._append_to_messages(HumanMessage(content=user_message))
 
         # no-LLM call of first instruction (LLM always calls this anyway)
-        self._append_to_messages({
-            "role": "assistant",
-            "content": None,
-            "function_call": {
-                "name": self._ri.initial_coverage_getter,
-                "arguments": "{}"
+        self._append_to_messages(AIMessage(
+            content="",
+            additional_kwargs={
+                "function_call": {
+                    "name": "get_covered_packages",
+                    "arguments": "{}"
+                }
             }
-        })
-        self._append_to_messages({
-            "role": "system",  # change
-            "name": self._ri.initial_coverage_getter,
-            "content": json.dumps(self._ri.fname2func[self._ri.initial_coverage_getter]())
-        })
+        ))
+        self._append_to_messages(SystemMessage(
+            name=self._ri.initial_coverage_getter,
+            content=json.dumps(self._ri.fname2func[self._ri.initial_coverage_getter]())
+        ))
 
     def call_function(self, response_message):
         function_name = response_message["function_call"]["name"]
         function_to_call = self._ri.fname2func[function_name]
-        function_args = json.loads(response_message["function_call"]["arguments"])
+        if response_message["function_call"]["arguments"]:
+            function_args = json.loads(response_message["function_call"]["arguments"])
+        else:
+            function_args = {}
         function_response = function_to_call(**function_args)
         return function_name, function_response
 
     def step(self, function_call_mode="auto"):
         if self._summarize_messages:
-            prompt_messages = self.messages + [{'role': 'system', 'content': 'Summarize the important content of the immediate prior message. If you are unsure of the solution, call a function afterwards. Be concise, but fully qualify all names.'}]
+            prompt_messages = self.messages + [SystemMessage(content='Summarize the important content of the immediate prior message. If you are unsure of the solution, call a function afterwards. Be concise, but fully qualify all names.')]
         else:
             prompt_messages = self.messages
 
@@ -222,42 +234,44 @@ class AutoDebugger():
 #   }
 #  ])
         
-        message = format_message_for_llm(prompt_messages)
 
-        response = ollama.chat(model='codellama', messages = message)
+        for message in self.messages:
+            print(type(message))
 
-        print(response['message']['content'])
+        #message = format_message_for_llm(prompt_messages)
+        response = self.model.invoke(prompt_messages)
+
+        print(response)
 
         #INSERTED<<
 
         if self._summarize_messages:
-            llm_summary = response['choices'][0]['message']['content']
+            llm_summary = response
             if llm_summary is not None:
                 self._replace_last_with_memo(llm_summary)
 
-        response_message = response["choices"][0]["message"]
+        response_message = json.loads(dumps(response))["kwargs"]
 
         self._append_to_interaction_records(prompt_messages, response_message)
 
         # check if GPT wanted to call a function
-        if response_message.get("function_call"):
+        if "function_call" in response_message['additional_kwargs']:
             # call the function
 
             try: # Note: the JSON response may not always be valid; be sure to handle errors
-                function_name, function_response = self.call_function(response_message)
+                function_name, function_response = self.call_function(response_message["additional_kwargs"])
             except Exception as e:
                 if self._debug or isinstance(e, KeyboardInterrupt):
                     raise e
                 else:
                     return False # drop erroneous response and retry if step budget left
 
-            self._append_to_messages(response_message) # extend conversation with assistant's reply
+            self._append_to_messages(response) # extend conversation with assistant's reply
             # send the info on the function call and function response to GPT
-            function_message = {
-                "role": "system",
-                "name": function_name,
-                "content": json.dumps(function_response),
-            }
+            function_message = SystemMessage(
+                name=function_name,
+                content=json.dumps(function_response),
+            )
             self._append_to_messages(function_message)
             return False # not done
         else:
@@ -281,7 +295,7 @@ class AutoDebugger():
             model=self._model,
             messages=self.messages,
         )
-        response_message = response["choices"][0]["message"]
+        response_message = response["message"]
         self._append_to_messages(response_message)
         return response_message['content'].strip()
 
@@ -355,14 +369,15 @@ if __name__ == '__main__':
         grade = traceback.format_exc()
         if args.debug:
             raise e
+    
+    ad.messages = list(map(lambda x: json.loads(dumps(x))["kwargs"], ad.messages))
 
     with open(args.out, "w") as f:
         json.dump({
             'time': time.time(),
             'messages': ad.messages,
             'interaction_records': {
-                "step_histories": ad._interaction_records,
-                "mid_to_message": ad._message_map
+                "step_histories": ad._interaction_records
             },
             'buggy_methods': grade,
         }, f, indent=4)
